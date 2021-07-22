@@ -13,6 +13,7 @@ import time
 import pickle
 from ahk import AHK
 import random
+import copy
 import re
 #tesseract imports
 
@@ -27,7 +28,7 @@ DEBUG_FLAG = True
 #[486, 1278] top right
 
 def randomTargetRangeIndex(target_range):
-    if len(target_range)==1:
+    if len(target_range)<=1:
         return 0
     else:
         return randint(0,len(target_range)-1)
@@ -275,12 +276,22 @@ while(True):
         target_range = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
         timerStart()
         score = 0 # 10 points is donezo
-        while(timeElasped()<90):
+        wins = 0
+        attempts = 0
+        loopTimeOut = 75
+        while(True):
             #loop to find targets
-            pointer_pos, confidence = locatePointer()
+            if target == 0.1 or target==0.2 and timeElasped()<loopTimeOut:
+                reclicktimer = time.monotonic()
+                while(time.monotonic()-reclicktimer)<0.2:
+                    ahk.click()
+                pointer_pos, confidence = locatePointer()
+            elif timeElasped()<loopTimeOut:
+                pointer_pos, confidence = locatePointer()
+            
             y = pointer_pos[1]
             percent = (y-miny)/(maxy-miny)
-            if(target-targetRange)<percent and percent<(target+targetRange):
+            if(target-targetRange)<percent and percent<(target+targetRange) or timeElasped()>loopTimeOut:
                 bool_enableTargetEdit = True
                 prev_percent = percent;
                 ahk.click()
@@ -299,7 +310,7 @@ while(True):
                 print('err: ' +str(targeterror))
                 
                 #response #originally 2readchat 1.2 for reset
-                time.sleep(2.4)
+                time.sleep(2.9)
                 response = readChatResposne()
                 tries = 0;
                 while response==-1:
@@ -307,6 +318,8 @@ while(True):
                     response = readChatResposne()
                     tries+=1
                     if tries>4:
+                        print("ERRRRORROR: UNABLE TO GENERATE CHAT RESPONSE")
+                        response = 'ERROR'
                         break;
                 if abs(targeterror)>0.2:
                     bool_enableTargetEdit = False;
@@ -314,56 +327,87 @@ while(True):
                 indx = 0;
                 if response[0]=='nothing':
                     print('elim around: ' +str(percent))
-                    while indx<len(target_range) and bool_enableTargetEdit:
-                        if abs(target_range[indx]-percent)<0.16:
-                            print('val: '+str(target_range[indx])+' percent: '+str(percent))
-                            print('indx '+str(indx)+' target_range: '+str(target_range))
-                            target_range.pop(indx)
-                        else:
-                            indx+=1;
-                    target = target_range[randomTargetRangeIndex(target_range)]
-                    print(target_range)
-                    print('\n')
+                    if bool_enableTargetEdit:
+                        while indx<len(target_range):
+                            if abs(target_range[indx]-percent)<0.16:
+                                print('val: '+str(target_range[indx])+' percent: '+str(percent))
+                                print('indx '+str(indx)+' target_range: '+str(target_range))
+                                target_range.pop(indx)
+                            else:
+                                indx+=1
+                        Target = random.choice(target_range)
+                        print(target_range)
+                        print('\n')
                     
                 if response[0]=='something close':
                     score+=1
-                    while indx<len(target_range) and bool_enableTargetEdit:
-                        if abs(target_range[indx]-percent)>0.27:
-                            print('val: '+str(target_range[indx])+' percent: '+str(percent))
-                            print('indx '+str(indx)+' target_range: '+str(target_range))
-                            target_range.pop(indx)
-                        else:
-                            indx+=1;
-                    target = target_range[randomTargetRangeIndex(target_range)]
-                    print(target_range)
-                    print('\n')
+                    if bool_enableTargetEdit:
+                        while indx<len(target_range):
+                            if abs(target_range[indx]-percent)>0.27:
+                                print('val: '+str(target_range[indx])+' percent: '+str(percent))
+                                print('indx '+str(indx)+' target_range: '+str(target_range))
+                                target_range.pop(indx)
+                            else:
+                                indx+=1
+                        #prev_target = target
+                        #while prev_target==target and len(target_range)>1: #suspect code
+                        #    target = target_range[randomTargetRangeIndex(target_range)]
+                        #    print('stuck in inf loop~355')
+                        target = random.choice(target_range)                       
+                        print(target_range)
+                        print('\n')
                     
 
-                if response[0]=='very' and bool_enableTargetEdit:
+                if response[0]=='very':
                     score+=4
-                    while indx<len(target_range):
-                        if abs(target_range[indx]-percent)>0.17:
-                            print('val: '+str(target_range[indx])+' percent: '+str(percent))
-                            print('indx '+str(indx)+' target_range: '+str(target_range))
-                            target_range.pop(indx)
-                        else:
-                            indx+=1;
-                    target = target_range[randomTargetRangeIndex(target_range)]
-                    print(target_range)
-                    print('\n')
-                    
+                    if bool_enableTargetEdit:
+                        while indx<len(target_range):
+                            if abs(target_range[indx]-percent)>0.17:
+                                print('val: '+str(target_range[indx])+' percent: '+str(percent))
+                                print('indx '+str(indx)+' target_range: '+str(target_range))
+                                target_range.pop(indx)
+                            else:
+                                indx+=1;
+                        #target = target_range[randomTargetRangeIndex(target_range)]
+                        target = target #lets try to keep the same target for these guys
+                        print(target_range)
+                        print('\n')
+                
                 if response[0]=='top':
                     score+=10
+                print('time elaspesd ' + str(timeElasped()))
+                attempts+=1
+                print('attempts: '+str(attempts)+' score: '+str(score) +' new target: ' + str(target))
                 
-                if score>=10:
-                    score=0
-                    time.sleep(0.9)
-                    mouseMotionClick(positions[I_YES2],10,'left')
-                    mouseMotionClick(positions[I_CHOP],1,'none')
+                #end conditions
+                if score>=10 and timeElasped()>60 or attempts>=10 or score>=10 or timeElasped()>75:
+                    
+                    wins+=1
+                    time.sleep(0.8)
+                    print('wins:' + str(wins))
+                    if wins==4 or timeElasped()>60 or attempts>=10:
+                        time.sleep(1)
+                        I_NO = copy.copy(positions[I_YES2])
+                        I_NO[0] = I_NO[0]+75
+                        mouseMotionClick(I_NO,10,'left')
+                        time.sleep(1)
+                        mouseMotionClick(positions[I_MINIGAME],10,'right')
+                        mouseMotionClick(positions[I_YES1],10,'left')
+                        time.sleep(2)
+                        mouseMotionClick(positions[I_BUTTON],10,'left')
+                        mouseMotionClick(positions[I_CHOP],10,'none')
+                        miny = positions[I_MINY]
+                        maxy = positions[I_MAXY]
+                        timerStart()
+                        wins = 0
+                    else:
+                        mouseMotionClick(positions[I_YES2],10,'left')
+                        mouseMotionClick(positions[I_CHOP],1,'none')
+                    attempts=0
+                    score = 0
                     targetRange = 0.1
                     target = 0.5
                     target_range = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
-            
     #example of reading chat
     if command == 'readchat':
         readChatResposne()
