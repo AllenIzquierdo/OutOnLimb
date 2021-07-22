@@ -17,6 +17,7 @@ import re
 #tesseract imports
 
 import pytesseract
+from numpy.random.mtrand import randint
 
 
 DEBUG_FLAG = True
@@ -25,7 +26,12 @@ DEBUG_FLAG = True
 #[[82, 1319] bottom left
 #[486, 1278] top right
 
-
+def randomTargetRangeIndex(target_range):
+    if len(target_range)==1:
+        return 0
+    else:
+        return randint(0,len(target_range)-1)
+    
 def configlimits():
     timerStart()
     miny = 10000
@@ -305,41 +311,30 @@ while(True):
                 indx = 0;
                 if response[0]=='nothing':
                     print('elim around: ' +str(percent))
-                    tError = False
-                    while indx<len(target_range):
+                    while indx<len(target_range) and bool_enableTargetEdit:
                         if abs(target_range[indx]-percent)<0.16:
                             print('val: '+str(target_range[indx])+' percent: '+str(percent))
                             print('indx '+str(indx)+' target_range: '+str(target_range))
-                            elim = target_range.pop(indx)
-                            
+                            target_range.pop(indx)
                         else:
                             indx+=1;
-                    
-                        
-                    ## Added Section Above
-                    
-                    target = target_range[random.randint(0,len(target_range)-1)]
+                    target = target_range[randomTargetRangeIndex(target_range)]
+                    print(target_range)
                     print('\n')
-
                     
                 if response[0]=='something close':
-                    Error = False
                     score+=1
                     while indx<len(target_range):
                         if abs(target_range[indx]-percent)>0.27:
                             print('val: '+str(target_range[indx])+' percent: '+str(percent))
                             print('indx '+str(indx)+' target_range: '+str(target_range))
-                            elim = target_range.pop(indx)
-                            print('eliminted '+str(elim))
+                            target_range.pop(indx)
                         else:
                             indx+=1;
-                    
-                        
-                    ## Added Section Above
-                    
-                    target = target_range[random.randint(0,len(target_range)-1)]
-                    print('\n')
+                    target = target_range[randomTargetRangeIndex(target_range)]
                     print(target_range)
+                    print('\n')
+                    
 
                 if response[0]=='very':
                     Error = False
@@ -348,17 +343,13 @@ while(True):
                         if abs(target_range[indx]-percent)>0.17:
                             print('val: '+str(target_range[indx])+' percent: '+str(percent))
                             print('indx '+str(indx)+' target_range: '+str(target_range))
-                            elim = target_range.pop(indx)
-                            print('eliminted '+str(elim))
+                            target_range.pop(indx)
                         else:
                             indx+=1;
-                    
-                        
-                    ## Added Section Above
-                    
-                    target = target_range[random.randint(0,len(target_range)-1)]
-                    print('\n')
+                    target = target_range[randomTargetRangeIndex(target_range)]
                     print(target_range)
+                    print('\n')
+                    
                 if response[0]=='top':
                     score+=10
                 
