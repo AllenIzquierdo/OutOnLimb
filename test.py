@@ -281,11 +281,11 @@ while(True):
             y = pointer_pos[1]
             percent = (y-miny)/(maxy-miny)
             if(target-targetRange)<percent and percent<(target+targetRange):
+                bool_enableTargetEdit = True
                 prev_percent = percent;
                 ahk.click()
-                time.sleep(0.7)
+                time.sleep(0.5)
                 #update pointer pos and report err
-                pointer_pos, confidence = locatePointer()
                 pointer_pos, confidence = locatePointer()
                 y = pointer_pos[1]
                 percent = (y-miny)/(maxy-miny)
@@ -295,10 +295,11 @@ while(True):
                 if percent==1:
                     percentRounded = 0.9
                 print('result '+str(percent))
-                print('err: ' +str(percent-prev_percent))
+                targeterror = percent-prev_percent
+                print('err: ' +str(targeterror))
                 
-                #response
-                time.sleep(1.7)
+                #response #originally 2readchat 1.2 for reset
+                time.sleep(2.4)
                 response = readChatResposne()
                 tries = 0;
                 while response==-1:
@@ -307,6 +308,8 @@ while(True):
                     tries+=1
                     if tries>4:
                         break;
+                if abs(targeterror)>0.2:
+                    bool_enableTargetEdit = False;
                 #Reposne Actions
                 indx = 0;
                 if response[0]=='nothing':
@@ -324,7 +327,7 @@ while(True):
                     
                 if response[0]=='something close':
                     score+=1
-                    while indx<len(target_range):
+                    while indx<len(target_range) and bool_enableTargetEdit:
                         if abs(target_range[indx]-percent)>0.27:
                             print('val: '+str(target_range[indx])+' percent: '+str(percent))
                             print('indx '+str(indx)+' target_range: '+str(target_range))
@@ -336,8 +339,7 @@ while(True):
                     print('\n')
                     
 
-                if response[0]=='very':
-                    Error = False
+                if response[0]=='very' and bool_enableTargetEdit:
                     score+=4
                     while indx<len(target_range):
                         if abs(target_range[indx]-percent)>0.17:
@@ -355,9 +357,9 @@ while(True):
                 
                 if score>=10:
                     score=0
-                    time.sleep(2.3)
+                    time.sleep(0.9)
                     mouseMotionClick(positions[I_YES2],10,'left')
-                    mouseMotionClick(positions[I_CHOP],10,'none')
+                    mouseMotionClick(positions[I_CHOP],1,'none')
                     targetRange = 0.1
                     target = 0.5
                     target_range = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
