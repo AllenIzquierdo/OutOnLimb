@@ -1,7 +1,7 @@
 #TODO ADD VELOCITY PREDICTION
 #TODO ADD ZONE 1 (early spam) assist
 #TOSS HIGH ERROR RESULTS
-#ELINAMITE HIGH ERRORS
+#
 import win32gui
 import cv2 as cv
 import numpy as np
@@ -108,8 +108,7 @@ def locatePointer():
         gray_scan_zone = cv.circle(gray_scan_zone,maxLoc,10,color=(255,255,255))
         cv.imshow('test',gray_scan_zone)
         cv.waitKey(1)
-    else:
-        return maxLoc, maxVal
+    return maxLoc, maxVal
             
 def readChatResposne(): #https://stackoverflow.com/questions/28280920/convert-array-of-words-strings-to-regex-and-use-it-to-get-matches-on-a-string for refernce comparing array of strings to string
     global RESPONES
@@ -215,7 +214,7 @@ NEAR = 'You sense something close.'
 VERYNEAR = 'You sense something very close.'
 #RESPONES = [START, MISS, NEAR, VERYNEAR,BULLSEYE]
 RESPONES = ['nothing','something close','very','top']
-img = []
+
 #start program
 while(True):
     command = input('Await your command:')
@@ -276,11 +275,11 @@ while(True):
             y = pointer_pos[1]
             percent = (y-miny)/(maxy-miny)
             if(target-targetRange)<percent and percent<(target+targetRange):
-                prev_pointer_pos = pointer_pos #for debugging high errorss
                 prev_percent = percent;
                 ahk.click()
                 time.sleep(0.7)
                 #update pointer pos and report err
+                pointer_pos, confidence = locatePointer()
                 pointer_pos, confidence = locatePointer()
                 y = pointer_pos[1]
                 percent = (y-miny)/(maxy-miny)
@@ -291,10 +290,7 @@ while(True):
                     percentRounded = 0.9
                 print('result '+str(percent))
                 print('err: ' +str(percent-prev_percent))
-                #if percent-prev_percent>0.4:
-                 #   img = cv.circle(img,pointer_pos,10,color=(255,255,255))
-                 #   img = cv.circle(img,prev_pointer_pos,13,color=(255,0,255))
-                  #  cv.imwrite('errorPic.jpg',img)
+                
                 #response
                 time.sleep(1.7)
                 response = readChatResposne()
