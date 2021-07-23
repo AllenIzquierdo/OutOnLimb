@@ -26,11 +26,11 @@ try:
     pkl_file = open('data.pkl', 'rb')
     positions = pickle.load(pkl_file)
     pkl_file.close()
+    print(positions)
 except:
     print('file read error')
-I_count = 10 #update whenever adding new values
-while len(positions)<I_count:
-    positions.append(0)
+    positions = []
+I_count = 10
 I_MINIGAME = 0
 I_YES1 = 1
 I_BUTTON = 2
@@ -81,9 +81,9 @@ def configlimits():
         positions.append(maxy)
         positions.append(miny)
     #save data
-    output = open('data.pkl', 'wb')
-    pickle.dump(positions, output)
-    output.close()
+    #output = open('data.pkl', 'wb')
+    #pickle.dump(positions, output)
+    #output.close()
 #ff14 output controls
 def mouseMotionClick(xy,rate,clicktype):
     global ahk
@@ -92,6 +92,7 @@ def mouseMotionClick(xy,rate,clicktype):
         ahk.right_click()
     if clicktype=='left':
         ahk.click()
+
 #ff14 input functions
 def locatePointer():
     #capture ff14 image
@@ -119,8 +120,9 @@ def locatePointer():
     #cv.imshow('test',scan_zone)
     
         #gray scale image processing
+        #prev thres values, 150 (ok)
     gray_scan_zone = cv.cvtColor(scan_zone, cv.COLOR_BGR2GRAY)
-    th, gray_scan_zone = cv.threshold(gray_scan_zone,150,255,cv.THRESH_BINARY)
+    th, gray_scan_zone = cv.threshold(gray_scan_zone,200,255,cv.THRESH_BINARY)
     result = cv.matchTemplate(gray_scan_zone, gray_target_img, cv.TM_CCOEFF_NORMED)
     minVal, maxVal, minLoc, maxLoc = cv.minMaxLoc(result)
     
@@ -136,6 +138,10 @@ def readChatResposne(DEBUG = False): #https://stackoverflow.com/questions/282809
     global RESPONES
     game_img = capture_window(target_hwnd)
     game_img = game_img[1278:1319,82:486+100]
+    game_img = cv.cvtColor(game_img,cv.COLOR_BGR2GRAY)
+    game_img = cv.threshold(game_img, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)[1]
+    #cv.imshow('hellotext',game_img)
+    #cv.waitKey(1)
     #cv.imshow('text', game_img) #debug
     text = pytesseract.image_to_string(game_img)[:-2]
     r = re.compile('|'.join([r'\b%s\b' % w for w in RESPONES]), flags=re.I)
@@ -149,6 +155,7 @@ def readChatResposne(DEBUG = False): #https://stackoverflow.com/questions/282809
     
 
 def mousePosLog(key):
+    
     while(True):
         if(keyboard.is_pressed('q')):
             break
@@ -158,7 +165,7 @@ def mousePosLog(key):
     global positions
     positions.append(pos_vec)
     print(positions)
-    #time.sleep(0.25)
+    time.sleep(0.25)
     return 
 
 def find_FF(hwnd, result):
