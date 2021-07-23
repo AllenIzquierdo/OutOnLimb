@@ -173,7 +173,7 @@ while(True):
                 idle_pointer_percent = percent;
                 
                 #retrieve chat feedback
-                response = readChatResposne(True)
+                response = readChatResposne()
                 tries = 0;
                 while response==-1:
                     time.sleep(0.2)
@@ -188,62 +188,68 @@ while(True):
                     bool_enableTargetEdit = False;
                 indx = 0;
                 print(response[0]);
-                if response[0]=='nothing':
-                    if bool_enableTargetEdit:
-                        while indx<len(target_range):
-                            if abs(target_range[indx]-percent)<0.16:
-                                #print('val: '+str(target_range[indx])+' percent: '+str(percent))
-                                #print('indx '+str(indx)+' target_range: '+str(target_range))
-                                target_range.pop(indx)
-                            else:
-                                indx+=1
-                        #remove end values relative to known hotspot
-                        if target_hotspot != -1:
-                            if  percent > target_hotspot:
-                                while(True):
-                                    emptyspot = target_range.pop()
-                                    if emptyspot < percent:
-                                        target_range.append(emptyspot)
-                                        break;
-                            else:
-                                while(True):
-                                    emptyspot = target_range.pop(0)
-                                    if emptyspot > percent:
-                                        target_range.insert(0,emptyspot)
-                                        break;
-                        target = random.choice(target_range)
+                try:
                     
-                if response[0]=='something close':
-                    score+=1
-                    if bool_enableTargetEdit:
-                        target_hotspot = percent;
-                        while indx<len(target_range):
-                            if abs(target_range[indx]-percent)>0.27:
-                                #print('val: '+str(target_range[indx])+' percent: '+str(percent))
-                                #print('indx '+str(indx)+' target_range: '+str(target_range))
-                                target_range.pop(indx)
-                            else:
-                                indx+=1
-                        #prev_target = target
-                        #while prev_target==target and len(target_range)>1: #suspect code
-                        #    target = target_range[randomTargetRangeIndex(target_range)]
-                        #    print('stuck in inf loop~355')
-                        target = random.choice(target_range)                       
-                    
+                    if response[0]=='nothing':
+                        if bool_enableTargetEdit:
+                            while indx<len(target_range):
+                                if abs(target_range[indx]-percent)<0.16:
+                                    #print('val: '+str(target_range[indx])+' percent: '+str(percent))
+                                    #print('indx '+str(indx)+' target_range: '+str(target_range))
+                                    target_range.pop(indx)
+                                else:
+                                    indx+=1
+                            #remove end values relative to known hotspot
+                            if target_hotspot != -1:
+                                if  percent > target_hotspot:
+                                    while(True):
+                                        emptyspot = target_range.pop()
+                                        if emptyspot < percent:
+                                            target_range.append(emptyspot)
+                                            break;
+                                else:
+                                    while(True):
+                                        emptyspot = target_range.pop(0)
+                                        if emptyspot > percent:
+                                            target_range.insert(0,emptyspot)
+                                            break;
+                            target = random.choice(target_range)
+                        
+                    if response[0]=='something close':
+                        score+=1
+                        if bool_enableTargetEdit:
+                            target_hotspot = percent;
+                            while indx<len(target_range):
+                                if abs(target_range[indx]-percent)>0.27:
+                                    #print('val: '+str(target_range[indx])+' percent: '+str(percent))
+                                    #print('indx '+str(indx)+' target_range: '+str(target_range))
+                                    target_range.pop(indx)
+                                else:
+                                    indx+=1
+                            #prev_target = target
+                            #while prev_target==target and len(target_range)>1: #suspect code
+                            #    target = target_range[randomTargetRangeIndex(target_range)]
+                            #    print('stuck in inf loop~355')
+                            target = random.choice(target_range)                       
+                        
 
-                if response[0]=='very':
-                    score+=4
-                    if bool_enableTargetEdit:
-                        target_hotspot = percent;
-                        while indx<len(target_range):
-                            if abs(target_range[indx]-percent)>0.17:
-                                #print('val: '+str(target_range[indx])+' percent: '+str(percent))
-                                #print('indx '+str(indx)+' target_range: '+str(target_range))
-                                target_range.pop(indx)
-                            else:
-                                indx+=1;
-                        #target = target_range[randomTargetRangeIndex(target_range)]
-                        target = target #lets try to keep the same target for these guys
+                    if response[0]=='very':
+                        score+=4
+                        if bool_enableTargetEdit:
+                            target_hotspot = percent;
+                            while indx<len(target_range):
+                                if abs(target_range[indx]-percent)>0.17:
+                                    #print('val: '+str(target_range[indx])+' percent: '+str(percent))
+                                    #print('indx '+str(indx)+' target_range: '+str(target_range))
+                                    target_range.pop(indx)
+                                else:
+                                    indx+=1;
+                            #target = target_range[randomTargetRangeIndex(target_range)]
+                            target = target #lets try to keep the same target for these guys
+                except IndexError:
+                    target = 0.5
+                    target_range = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
+                    target_hotspot = -1; # to be used in comparison to emptyspots
 
                 if response[0]=='top':
                     score+=10
@@ -263,8 +269,8 @@ while(True):
                     if wins==4 or timeElasped()>60 or attempts>=10:
                         time.sleep(1)
                         I_NO = copy.copy(positions[I_YES2])
-                        I_NO[0] = I_NO[0]+75
-                        mouseMotionClick(I_NO,10,'left')
+                        I_NO[0] = I_NO[0]+80
+                        mouseMotionClick(I_NO,14,'left')
                         time.sleep(1)
                         mouseMotionClick(positions[I_MINIGAME],10,'right')
                         mouseMotionClick(positions[I_YES1],10,'left')
