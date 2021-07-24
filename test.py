@@ -5,7 +5,7 @@
 from testfunctions import *
 import os
 import copy
-
+from pointassist import *
 
 #some chat constants
 #[[82, 1319] bottom left
@@ -117,14 +117,15 @@ while(True):
         mouseMotionClick(positions[I_CHOP],10,'none')
         miny = positions[I_MINY]
         maxy = positions[I_MAXY]
-        targetRange = 0.1
+        targetRange = 0.15
         cur_time = 0
         
         chatReadDelay = 2.8
         #variables to be reset every loop
-        target = 0.5
-        target_range = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
-        target_hotspot = -1; # to be used in comparison to emptyspots
+        targets = generateSearchPoints(0,1,includeExtremes=True)
+        target = targets.pop(0)
+        hotspotlevel = 0 
+        hotspotlocations = [0,0]
         timerStart()
         score = 0 # 10 points is donezo
         wins = 0
@@ -155,7 +156,7 @@ while(True):
                     setTimerDelayDict('locatepointer', chatReadDelay)
                     targetAquiredFlag = True
             
-            if target==0.1:
+            if target<=0.2:
                 ahk.click()
                 bool_enableTargetEdit = True
                 
@@ -188,72 +189,28 @@ while(True):
                     bool_enableTargetEdit = False;
                 indx = 0;
                 print(response[0]);
-                try:
-                    
-                    if response[0]=='nothing':
-                        if bool_enableTargetEdit:
-                            while indx<len(target_range):
-                                if abs(target_range[indx]-percent)<0.16:
-                                    #print('val: '+str(target_range[indx])+' percent: '+str(percent))
-                                    #print('indx '+str(indx)+' target_range: '+str(target_range))
-                                    target_range.pop(indx)
-                                else:
-                                    indx+=1
-                            #remove end values relative to known hotspot
-                            if target_hotspot != -1:
-                                if  percent > target_hotspot:
-                                    while(True):
-                                        emptyspot = target_range.pop()
-                                        if emptyspot < percent:
-                                            target_range.append(emptyspot)
-                                            break;
-                                else:
-                                    while(True):
-                                        emptyspot = target_range.pop(0)
-                                        if emptyspot > percent:
-                                            target_range.insert(0,emptyspot)
-                                            break;
-                            target = random.choice(target_range)
-                        
-                    if response[0]=='something close':
-                        score+=1
-                        if bool_enableTargetEdit:
-                            target_hotspot = percent;
-                            while indx<len(target_range):
-                                if abs(target_range[indx]-percent)>0.27:
-                                    #print('val: '+str(target_range[indx])+' percent: '+str(percent))
-                                    #print('indx '+str(indx)+' target_range: '+str(target_range))
-                                    target_range.pop(indx)
-                                else:
-                                    indx+=1
-                            #prev_target = target
-                            #while prev_target==target and len(target_range)>1: #suspect code
-                            #    target = target_range[randomTargetRangeIndex(target_range)]
-                            #    print('stuck in inf loop~355')
-                            target = random.choice(target_range)                       
-                        
-
-                    if response[0]=='very':
-                        score+=4
-                        if bool_enableTargetEdit:
-                            target_hotspot = percent;
-                            while indx<len(target_range):
-                                if abs(target_range[indx]-percent)>0.17:
-                                    #print('val: '+str(target_range[indx])+' percent: '+str(percent))
-                                    #print('indx '+str(indx)+' target_range: '+str(target_range))
-                                    target_range.pop(indx)
-                                else:
-                                    indx+=1;
-                            #target = target_range[randomTargetRangeIndex(target_range)]
-                            target = target #lets try to keep the same target for these guys
-                except IndexError:
-                    target = 0.5
-                    target_range = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
-                    target_hotspot = -1; # to be used in comparison to emptyspots
-
+                if response[0]=='nothing':
+                    score+=0
+                if response[0]=='something close':
+                    score+=1
+                    if hotspotlevel<1:
+                        hotspotlevel = 1
+                        targets = generateSearchPoints(-2, 2, hitmarker=percent, rangemarker=0.4)
+                        hotspotlocations[0] = percent
+                if response[0]=='very':
+                    score+=4
+                    if hotspotlevel<2:
+                        hotspotlevel = 2
+                        targets = generateSearchPoints(-2, 2, hitmarker=percent, rangemarker=0.2)
+                        hotspotlocations[1] = percent
                 if response[0]=='top':
                     score+=10
-                print(target_range)
+                print(targets)
+                if len(targets)>0:
+                    target = targets.pop(0)
+                else:
+                    if hotspotlocations[1]:
+                        target = hotspotlocations[1]
                 attempts+=1
                 print('score :' + str(score) + ' timer: ' + str(round(timeElasped())) + ' attempts: '+str(attempts))
                 print('\n')
@@ -292,9 +249,10 @@ while(True):
                     #MONITOR_RESET_FLAG = False
                     attempts=0
                     score = 0
-                    targetRange = 0.1
-                    target = 0.5
-                    target_range = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
+                    targets = generateSearchPoints(0,1,includeExtremes=True)
+                    target = targets.pop(0)
+                    hotspotlevel = 0 
+                    hotspotlocations = [0,0]
                     MONITOR_RESET_FLAG = False
                     targetAquiredFlag = False
     #example of reading chat
