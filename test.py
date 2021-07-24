@@ -76,28 +76,29 @@ while(True):
             os.remove('data.pkl')
         except FileNotFoundError:
             print('file not found')
-        del positions[:]
         print('mouse over minigame')
-        mousePosLog('q')
+        mousePosLog(I_MINIGAME)
         print('mouse over yes1')
-        mousePosLog('2')
+        mousePosLog(I_YES1)
         print('mouse over button')
-        mousePosLog('3')
+        mousePosLog(I_BUTTON)
         print('mouse over chop')
-        mousePosLog('4')
+        mousePosLog(I_CHOP)
+        print('mouse over health')
+        mousePosLog(I_HEALTH)
         print('mouse over upperleft')
-        mousePosLog('5')
+        mousePosLog(I_UPBOUND)
         print('mouse over edge')
-        mousePosLog('5')
+        mousePosLog(I_EDGE)
         print('mouse over lowerRight')
-        mousePosLog('5')
+        mousePosLog(I_LOWBOUND)
         print('mouse over timer')
-        mousePosLog('5')
+        mousePosLog(I_TIMER)
         #config limits
         print('configuring limits')
         configlimits()
         print('mouse over yes2')
-        mousePosLog('6')
+        mousePosLog(I_YES2)
         #save data
         output = open('data.pkl', 'wb')
         pickle.dump(positions, output)
@@ -136,20 +137,61 @@ while(True):
         idle_pointer_percent = 0
         targetAquiredFlag = False
         MONITOR_RESET_FLAG = False
+        health = 1
+        gamerestartDelay = 1.2
+        gamestartDelay = 0.9
+        time.sleep(gamestartDelay)
         while(True):
+            if(keyboard.is_pressed('q')):
+                break
+            
                 #update OPENCV IMAGE
-            pointer_pos= locatePointer()
+            y, health, gray_scale_line= locatePointer()
+                #reset process
+            if  attempts>=10 or timeElasped()>75 or health<120:
+                wins+=1
+                time.sleep(0.8)
+                print('wins:' + str(wins))
+                if wins==4 or timeElasped()>60 or attempts>=10:
+                    time.sleep(1)
+                    I_NO = copy.copy(positions[I_YES2])
+                    I_NO[0] = I_NO[0]+80
+                    mouseMotionClick(I_NO,14,'left')
+                    time.sleep(1)
+                    mouseMotionClick(positions[I_MINIGAME],10,'right')
+                    mouseMotionClick(positions[I_YES1],10,'left')
+                    time.sleep(2)
+                    mouseMotionClick(positions[I_BUTTON],10,'left')
+                    mouseMotionClick(positions[I_CHOP],10,'none')
+                    miny = positions[I_MINY]
+                    maxy = positions[I_MAXY]
+                    timerStart()
+                    time.sleep(gamestartDelay)
+                    wins = 0
+                else:
+                    mouseMotionClick(positions[I_YES2],10,'none')
+                    time.sleep(gamerestartDelay)
+                    ahk.click();
+                    time.sleep(0.1)
+                    mouseMotionClick(positions[I_CHOP],1,'none')
+                target_hotspot = -1 #reset hotspot for next loop
+                #MONITOR_RESET_FLAG = False
+                attempts=0
+                score = 0
+                targets = generateSearchPoints(0,1,includeExtremes=True)
+                target = targets.pop(0)
+                hotspotlevel = 0 
+                hotspotlocations = [0,0]
+                MONITOR_RESET_FLAG = False
+                targetAquiredFlag = False
 
                 #protect against errors
-            bool_enableTargetEdit = True
             prev_time = cur_time
             cur_time = time.monotonic()
             frame_time = cur_time-prev_time
-            y=pointer_pos
             percent = (y-miny)/(maxy-miny)
             
             if(target-targetRange)<percent and percent<(target+targetRange):
-                bool_enableTargetEdit = True
                 prev_percent = percent;
                 if targetAquiredFlag == False:
                     ahk.click()
@@ -158,7 +200,6 @@ while(True):
             
             if target<=0.2:
                 ahk.click()
-                bool_enableTargetEdit = True
                 
 
             #prevents timer spam with flipflop logic
@@ -168,7 +209,7 @@ while(True):
                     MONITOR_RESET_FLAG = False
                 
             #find pointer->retrive chat log->update target information
-            if flipflopDelayTimer('locatepointer') or timeElasped()>75:
+            if flipflopDelayTimer('locatepointer') or timeElasped()>75 or health<120:
                 print('reading chat')
                 targeterror = percent-target
                 print('result: '+str(round(percent,3))+' err: ' +str(round(targeterror,3)) + ' target ' +str(round(target,3)))
@@ -186,8 +227,6 @@ while(True):
                         break;
                 #response #originally 2readchat 1.2 for reset
                 ## Updates Target_Range information and assigns new target
-                if abs(targeterror)>0.2:
-                    bool_enableTargetEdit = False;
                 indx = 0;
                 print(response[0]);
                 if response[0]=='nothing':
@@ -206,7 +245,7 @@ while(True):
                         hotspotlocations[1] = percent
                 if response[0]=='top':
                     score+=10
-                print(targets)
+
                 if len(targets)>0:
                     target = targets.pop(0)
                 else:
@@ -214,48 +253,18 @@ while(True):
                         target = hotspotlocations[1]
                 attempts+=1
                 print('score :' + str(score) + ' timer: ' + str(round(timeElasped())) + ' attempts: '+str(attempts))
-                print('\n')
                 MONITOR_RESET_FLAG = True
                 #######
                 ## SCORING And RESETTING
                 ##
                 ########
+                print('health: '+str(health))
                 print("CVFPS: %3.2f, Frametime(ms): %3.2f" % (1/frame_time,frame_time*1000))
-                if score>=10 and timeElasped()>60 or attempts>=10 or score>=10 or timeElasped()>75:
-                    wins+=1
-                    time.sleep(0.8)
-                    print('wins:' + str(wins))
-                    if wins==4 or timeElasped()>60 or attempts>=10:
-                        time.sleep(1)
-                        I_NO = copy.copy(positions[I_YES2])
-                        I_NO[0] = I_NO[0]+80
-                        mouseMotionClick(I_NO,14,'left')
-                        time.sleep(1)
-                        mouseMotionClick(positions[I_MINIGAME],10,'right')
-                        mouseMotionClick(positions[I_YES1],10,'left')
-                        time.sleep(2)
-                        mouseMotionClick(positions[I_BUTTON],10,'left')
-                        mouseMotionClick(positions[I_CHOP],10,'none')
-                        miny = positions[I_MINY]
-                        maxy = positions[I_MAXY]
-                        timerStart()
-                        wins = 0
-                    else:
-                        mouseMotionClick(positions[I_YES2],10,'none')
-                        time.sleep(0.5)
-                        ahk.click();
-                        time.sleep(0.1)
-                        mouseMotionClick(positions[I_CHOP],1,'none')
-                    target_hotspot = -1 #reset hotspot for next loop
-                    #MONITOR_RESET_FLAG = False
-                    attempts=0
-                    score = 0
-                    targets = generateSearchPoints(0,1,includeExtremes=True)
-                    target = targets.pop(0)
-                    hotspotlevel = 0 
-                    hotspotlocations = [0,0]
-                    MONITOR_RESET_FLAG = False
-                    targetAquiredFlag = False
+                print('Next Target :' + str(target))
+                print(targets)
+                if(abs(targeterror)>0.3):
+                    print(gray_scale_line)
+                print('\n')
     #example of reading chat
     if command == 'readchat':
         readChatResposne()
@@ -263,4 +272,13 @@ while(True):
     #main loop
     if command == 'configlimits':
         configlimits();
+    if command == 'readhp':
+        game_img = capture_window(getFF14())#largest performance eater by far
+        healthpos = positions[I_HEALTH]
+        print(game_img[healthpos[1],healthpos[0],1])
+        
+        
+        
+        
+        
         

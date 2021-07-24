@@ -23,15 +23,7 @@ ahk = AHK('C:\Program Files\AutoHotkey\AutoHotkey.exe')
 target_img = cv.imread('arrow.jpg')
 gray_target_img = cv.cvtColor(target_img, cv.COLOR_BGR2GRAY)
 #ui element positions
-try:
-    pkl_file = open('data.pkl', 'rb')
-    positions = pickle.load(pkl_file)
-    pkl_file.close()
-    print(positions)
-except:
-    print('file read error')
-    positions = []
-I_count = 10
+I_count = 12
 I_MINIGAME = 0
 I_YES1 = 1
 I_BUTTON = 2
@@ -43,9 +35,21 @@ I_TIMER = 7
 I_MAXY = 8
 I_MINY = 9 #modify I_count whenver adding new values
 I_YES2 = 10
+I_HEALTH = 11
+try:
+    pkl_file = open('data.pkl', 'rb')
+    positions = pickle.load(pkl_file)
+    pkl_file.close()
+    print(positions)
+except:
+    print('file read error')
+    positions = [None]*I_count
 #chatbox responses
 RESPONES = ['nothing','something close','very','top']
 
+def getFF14():
+    global target_hwnd
+    return target_hwnd
 def timerStart():
     global startTime
     startTime = time.monotonic()
@@ -65,7 +69,7 @@ def configlimits():
     maxy = 0
     timerStart()
     while(timeElasped()<3):
-        y = locatePointer()
+        y,health,gray_scan_line = locatePointer()
         if miny > y:
             miny = y
         if maxy < y:
@@ -109,35 +113,28 @@ def locatePointer():
     global I_LOWBOUND
     global positions
     game_img = capture_window(target_hwnd)#largest performance eater by far
-    #crop image to scan zone
+        #crop image to scan zone for pointer
     top = positions[I_UPBOUND][1]
     bottom = positions[I_LOWBOUND][1]
     edge = positions[I_EDGE][0]
     scan_zone = game_img[top:bottom,edge:edge+1]
-    
-        #old code for rgb image
-    #result = cv.matchTemplate(scan_zone, target_img, cv.TM_CCOEFF_NORMED
-    #cv.circle(scan_zone,maxLoc,10,color=(0,255,0))
-    #cv.imshow('test',scan_zone)
-    #Debug Display 
-    #scan_zone = cv.circle(scan_zone,maxLoc,10,color=(255,255,255))
-    #cv.imshow('test',scan_zone)
-    
-        #gray scale image processing
-        #prev thres values, 150 (ok)
     gray_scan_zone = cv.cvtColor(scan_zone, cv.COLOR_BGR2GRAY)
-    th, gray_scan_zone = cv.threshold(gray_scan_zone,200,255,cv.THRESH_BINARY)
-    location = np.argmax(gray_scan_zone[:,0])
-    #minVal, maxVal, minLoc,maxLoc = cv.minMaxLoc(scan_zone, mask=mask)
-    
-    maxLoc = 0
-    maxVal = 0
+    th, gray_scan_zone = cv.threshold(gray_scan_zone,230,255,cv.THRESH_BINARY)
+    gray_scan_line = gray_scan_zone[:,0]
+    location = np.argmax(gray_scan_line)
+    # retrusn locaiton=-1 on target not found
+    if(gray_scan_line[location]==0):
+        location = -1
+
+    #obtain health info
+    healthpos = positions[I_HEALTH]
+    health =  game_img[healthpos[1],healthpos[0],1]
     #exit conditions
     if DEBUG_FLAG == True:
         #gray_scan_zone = cv.circle(gray_scan_zone,maxLoc,10,color=(255,255,255))
         cv.imshow('test',gray_scan_zone)
         cv.waitKey(1)
-    return location
+    return location,health,gray_scan_line
             
 def readChatResposne(DEBUG = False): #https://stackoverflow.com/questions/28280920/convert-array-of-words-strings-to-regex-and-use-it-to-get-matches-on-a-string for refernce comparing array of strings to string
     global RESPONES
@@ -159,8 +156,7 @@ def readChatResposne(DEBUG = False): #https://stackoverflow.com/questions/282809
         return [-1]
     
 
-def mousePosLog(key):
-    
+def mousePosLog(index):
     while(True):
         if(keyboard.is_pressed('q')):
             break
@@ -168,7 +164,7 @@ def mousePosLog(key):
     x, y = pydirectinput.position()
     pos_vec = [x,y]
     global positions
-    positions.append(pos_vec)
+    positions[index] = pos_vec
     print(positions)
     time.sleep(0.25)
     return 
