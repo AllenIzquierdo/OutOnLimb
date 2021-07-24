@@ -87,6 +87,8 @@ while(True):
         mousePosLog('4')
         print('mouse over upperleft')
         mousePosLog('5')
+        print('mouse over edge')
+        mousePosLog('5')
         print('mouse over lowerRight')
         mousePosLog('5')
         print('mouse over timer')
@@ -136,16 +138,14 @@ while(True):
         MONITOR_RESET_FLAG = False
         while(True):
                 #update OPENCV IMAGE
-            pointer_pos, cv_confidence = locatePointer()
+            pointer_pos= locatePointer()
 
                 #protect against errors
             bool_enableTargetEdit = True
             prev_time = cur_time
             cur_time = time.monotonic()
             frame_time = cur_time-prev_time
-            #print("CVFPS: %3.2f, Frametime(ms): %3.2f" % (1/frame_time,frame_time*1000))
-            
-            y = pointer_pos[1]
+            y=pointer_pos
             percent = (y-miny)/(maxy-miny)
             
             if(target-targetRange)<percent and percent<(target+targetRange):
@@ -169,6 +169,7 @@ while(True):
                 
             #find pointer->retrive chat log->update target information
             if flipflopDelayTimer('locatepointer') or timeElasped()>75:
+                print('reading chat')
                 targeterror = percent-target
                 print('result: '+str(round(percent,3))+' err: ' +str(round(targeterror,3)) + ' target ' +str(round(target,3)))
                 idle_pointer_percent = percent;
@@ -219,6 +220,7 @@ while(True):
                 ## SCORING And RESETTING
                 ##
                 ########
+                print("CVFPS: %3.2f, Frametime(ms): %3.2f" % (1/frame_time,frame_time*1000))
                 if score>=10 and timeElasped()>60 or attempts>=10 or score>=10 or timeElasped()>75:
                     wins+=1
                     time.sleep(0.8)
@@ -239,7 +241,6 @@ while(True):
                         timerStart()
                         wins = 0
                     else:
-                        locatePointer()
                         mouseMotionClick(positions[I_YES2],10,'none')
                         time.sleep(0.5)
                         ahk.click();

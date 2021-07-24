@@ -1,4 +1,4 @@
-DEBUG_FLAG = True
+DEBUG_FLAG = False
 
 import win32gui
 import cv2 as cv
@@ -13,6 +13,7 @@ from ahk import AHK
 import random
 import re
 import pytesseract
+import os
 from numpy.random.mtrand import randint
 #tesseract imports and pathing
 import pytesseract
@@ -36,11 +37,12 @@ I_YES1 = 1
 I_BUTTON = 2
 I_CHOP = 3
 I_UPBOUND = 4
-I_LOWBOUND = 5
-I_TIMER = 6
-I_MAXY = 7
-I_MINY = 8 #modify I_count whenver adding new values
-I_YES2 = 9
+I_EDGE = 5
+I_LOWBOUND = 6
+I_TIMER = 7
+I_MAXY = 8
+I_MINY = 9 #modify I_count whenver adding new values
+I_YES2 = 10
 #chatbox responses
 RESPONES = ['nothing','something close','very','top']
 
@@ -61,29 +63,35 @@ def configlimits():
     timerStart()
     miny = 10000
     maxy = 0
+    timerStart()
     while(timeElasped()<3):
-        pointer_pos, confidence = locatePointer()
-        y = pointer_pos[1]
-        if miny>y:
+        y = locatePointer()
+        if miny > y:
             miny = y
-        if maxy<y:
+        if maxy < y:
             maxy = y
-    print(maxy)
-    print(miny)
+        
     global positions
     global I_MINY
     global I_MAXY
     global I_count
-    if len(positions)==I_count:
+    if len(positions) < I_count:
+        positions.append(miny)
+        positions.append(miny)
+    else:
         positions[I_MAXY] = maxy
         positions[I_MINY] = miny
-    else:
-        positions.append(maxy)
-        positions.append(miny)
     #save data
     #output = open('data.pkl', 'wb')
     #pickle.dump(positions, output)
     #output.close()
+    try:
+        os.remove('data.pkl')
+    except FileNotFoundError:
+        print('file not found')
+    output = open('data.pkl', 'wb')
+    pickle.dump(positions, output)
+    output.close()
 #ff14 output controls
 def mouseMotionClick(xy,rate,clicktype):
     global ahk
@@ -100,16 +108,12 @@ def locatePointer():
     global I_UPBOUND
     global I_LOWBOUND
     global positions
-    game_img = capture_window(target_hwnd)
+    game_img = capture_window(target_hwnd)#largest performance eater by far
     #crop image to scan zone
-    topleft = positions[I_UPBOUND]
-    bottomright = positions[I_LOWBOUND]
-    zone_width = bottomright[0]-topleft[0]
-    zone_height = bottomright[1]-topleft[1]
-    zone_x = topleft[0]
-    zone_y = topleft[1]
-    scan_zone = game_img[zone_y:zone_y+zone_height,zone_x:zone_x+zone_width]
-
+    top = positions[I_UPBOUND][1]
+    bottom = positions[I_LOWBOUND][1]
+    edge = positions[I_EDGE][0]
+    scan_zone = game_img[top:bottom,edge:edge+1]
     
         #old code for rgb image
     #result = cv.matchTemplate(scan_zone, target_img, cv.TM_CCOEFF_NORMED
@@ -123,16 +127,17 @@ def locatePointer():
         #prev thres values, 150 (ok)
     gray_scan_zone = cv.cvtColor(scan_zone, cv.COLOR_BGR2GRAY)
     th, gray_scan_zone = cv.threshold(gray_scan_zone,200,255,cv.THRESH_BINARY)
-    result = cv.matchTemplate(gray_scan_zone, gray_target_img, cv.TM_CCOEFF_NORMED)
-    minVal, maxVal, minLoc, maxLoc = cv.minMaxLoc(result)
+    location = np.argmax(gray_scan_zone[:,0])
+    #minVal, maxVal, minLoc,maxLoc = cv.minMaxLoc(scan_zone, mask=mask)
     
-    
+    maxLoc = 0
+    maxVal = 0
     #exit conditions
     if DEBUG_FLAG == True:
-        gray_scan_zone = cv.circle(gray_scan_zone,maxLoc,10,color=(255,255,255))
+        #gray_scan_zone = cv.circle(gray_scan_zone,maxLoc,10,color=(255,255,255))
         cv.imshow('test',gray_scan_zone)
         cv.waitKey(1)
-    return maxLoc, maxVal
+    return location
             
 def readChatResposne(DEBUG = False): #https://stackoverflow.com/questions/28280920/convert-array-of-words-strings-to-regex-and-use-it-to-get-matches-on-a-string for refernce comparing array of strings to string
     global RESPONES
@@ -194,7 +199,8 @@ def capture_window(hwnd):
     img = np.fromstring(signedIntsArray, dtype='uint8')
     img.shape = (h,w,4)
     img = img[...,:3] # remove alpha channel with num slicing
-    img = np.ascontiguousarray(img) #solves rectangular draw problems?
+    #WARNING BIG PROBLEM MAYBE
+    #img = np.ascontiguousarray(img) #solves rectangular draw problems?
     # Free Resources
     dcObj.DeleteDC()
     cDC.DeleteDC()
