@@ -1,5 +1,7 @@
 DEBUG_FLAG = True
-
+#resolutions
+w_resolution = 2560 # set this
+h_resolution = 1440 # set this
 import win32gui
 import cv2 as cv
 import numpy as np
@@ -13,6 +15,7 @@ from ahk import AHK
 import random
 import re
 import pytesseract
+import os
 from numpy.random.mtrand import randint
 #tesseract imports and pathing
 import pytesseract
@@ -22,15 +25,17 @@ ahk = AHK('C:\Program Files\AutoHotkey\AutoHotkey.exe')
 target_img = cv.imread('arrow.jpg')
 gray_target_img = cv.cvtColor(target_img, cv.COLOR_BGR2GRAY)
 #ui element positions
+I_count = 14
 try:
     pkl_file = open('data.pkl', 'rb')
     positions = pickle.load(pkl_file)
     pkl_file.close()
+    while(len(positions)<I_count):
+        positions.append(None)
     print(positions)
 except:
     print('file read error')
-    positions = []
-I_count = 10
+    positions = [None]*I_count
 I_MINIGAME = 0
 I_YES1 = 1
 I_BUTTON = 2
@@ -41,9 +46,23 @@ I_TIMER = 6
 I_MAXY = 7
 I_MINY = 8 #modify I_count whenver adding new values
 I_YES2 = 9
+I_CONGRATS_TOPLEFT = 10
+I_CONGRATS_BOTTOMRIGHT= 11
+I_CHAT_TOPLEFT = 12
+I_CHAT_BOTTOMRIGHT = 13
 #chatbox responses
 RESPONES = ['nothing','something close','very','top']
-
+def getFF14():
+    global target_hwnd
+    return target_hwnd
+def saveconfig():
+    try:
+        os.remove('data.pkl')
+    except FileNotFoundError:
+        print('file not found')
+    output = open('data.pkl', 'wb')
+    pickle.dump(positions, output)
+    output.close()
 def timerStart():
     global startTime
     startTime = time.monotonic()
@@ -74,16 +93,13 @@ def configlimits():
     global I_MINY
     global I_MAXY
     global I_count
-    if len(positions)==I_count:
-        positions[I_MAXY] = maxy
-        positions[I_MINY] = miny
-    else:
-        positions.append(maxy)
-        positions.append(miny)
+    positions[I_MAXY] = maxy
+    positions[I_MINY] = miny
     #save data
     #output = open('data.pkl', 'wb')
     #pickle.dump(positions, output)
     #output.close()
+    saveconfig()
 #ff14 output controls
 def mouseMotionClick(xy,rate,clicktype):
     global ahk
@@ -137,15 +153,12 @@ def locatePointer():
 def readChatResposne(DEBUG = False): #https://stackoverflow.com/questions/28280920/convert-array-of-words-strings-to-regex-and-use-it-to-get-matches-on-a-string for refernce comparing array of strings to string
     global RESPONES
     game_img = capture_window(target_hwnd)
-    game_img = game_img[1278:1319,82:486+100]
-    game_img = cv.cvtColor(game_img,cv.COLOR_BGR2GRAY)
-    game_img = cv.threshold(game_img, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)[1]
-    #cv.imshow('hellotext',game_img)
-    #cv.waitKey(1)
-    #cv.imshow('text', game_img) #debug
-    text = pytesseract.image_to_string(game_img)[:-2]
-    r = re.compile('|'.join([r'\b%s\b' % w for w in RESPONES]), flags=re.I)
-    value = r.findall(text)
+    #game_img = game_img[1278:1319,82:486+100]
+    #topleft = [82,1278]
+    #bottomright = [586,1319]
+    topleft = positions[I_CHAT_TOPLEFT]
+    bottomright = positions[I_CHAT_BOTTOMRIGHT]
+    value = readBoxKeywords(topleft,bottomright, game_img, RESPONES, DEBUG, SHOW_IMG = True)
     if value:
         if DEBUG:
             print(value)
@@ -153,6 +166,57 @@ def readChatResposne(DEBUG = False): #https://stackoverflow.com/questions/282809
     else:
         return [-1]
     
+def readBoxKeywords(topleft, bottomright, image, keywords="", DEBUG = False, SHOW_IMG = False): #https://stackoverflow.com/questions/28280920/convert-array-of-words-strings-to-regex-and-use-it-to-get-matches-on-a-string for refernce comparing array of strings to string
+
+    image = image[topleft[1]:bottomright[1],topleft[0]:bottomright[0]]
+    image = cv.cvtColor(image,cv.COLOR_BGR2GRAY)
+    image = cv.threshold(image, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)[1]
+    if SHOW_IMG:
+        cv.imshow('readBoxKeywords',image)
+        cv.waitKey(1)
+    text = pytesseract.image_to_string(image) #probably dont need deliminator anymore
+    #r = re.compile('|'.join([r'\b%s\b' % w for w in keywords]), flags=re.I)
+    #value = r.findall(text)
+    value = [None]
+    index = 0
+    while index < len(keywords):
+        if keywords[index] in text:
+            value[0] = keywords[index]
+            break
+        index+=1
+    if DEBUG:
+        print(text)
+        if value:
+            print(value[0])
+    if value:
+        return value
+    else:
+        return [-1]
+
+def quarymosue():
+    while(True):
+        if(keyboard.is_pressed('q')):
+            break
+    x, y = pydirectinput.position()
+    pos_vec = [x,y]
+    time.sleep(0.25)
+    return pos_vec
+def defineChatBox(image):
+    #for ff14 game_img = capture_window(target_hwnd)
+    topleft = [0,0]
+    bottomright = [0,0]
+    while(True):
+        print('topleft of box')
+        topleft = quarymosue()
+        print(topleft)
+        print('bottomright of box')
+        bottomright = quarymosue()
+        print(bottomright)
+        readBoxKeywords(topleft, bottomright, image, SHOW_IMG = True)
+        command = input('satisfied y/n:')
+        if command == 'y':
+            break
+    return topleft, bottomright
 
 def mousePosLog(key):
     
@@ -177,22 +241,22 @@ def find_FF(hwnd, result):
 
 #capture image /ripped from https://stackoverflow.com/questions/3586046/fastest-way-to-take-a-screenshot-with-python-on-windows
 def capture_window(hwnd):
-    w = 2560 # set this
-    h = 1440 # set this
     #bmpfilenamename = "out.bmp" #set this
+    global w_resolution 
+    global h_resolution
     
     wDC = win32gui.GetWindowDC(hwnd)
     dcObj=win32ui.CreateDCFromHandle(wDC)
     cDC=dcObj.CreateCompatibleDC()
     dataBitMap = win32ui.CreateBitmap()
-    dataBitMap.CreateCompatibleBitmap(dcObj, w, h)
+    dataBitMap.CreateCompatibleBitmap(dcObj, w_resolution, h_resolution)
     cDC.SelectObject(dataBitMap)
-    cDC.BitBlt((0,0),(w, h) , dcObj, (0,0), win32con.SRCCOPY)
+    cDC.BitBlt((0,0),(w_resolution, h_resolution) , dcObj, (0,0), win32con.SRCCOPY)
     #dataBitMap.SaveBitmapFile(cDC, bmpfilenamename)
     # faster image conversion
     signedIntsArray = dataBitMap.GetBitmapBits(True)
     img = np.fromstring(signedIntsArray, dtype='uint8')
-    img.shape = (h,w,4)
+    img.shape = (h_resolution,w_resolution,4)
     img = img[...,:3] # remove alpha channel with num slicing
     img = np.ascontiguousarray(img) #solves rectangular draw problems?
     # Free Resources

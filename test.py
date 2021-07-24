@@ -53,9 +53,9 @@ def flipflopDelayTimer(string_index):
         return False
         
 #find target window
-target_hwnd = 0
-win32gui.EnumWindows(find_FF, target_hwnd)
-
+global target_hwnd
+fakevar = 0
+win32gui.EnumWindows(find_FF, fakevar)
 
 
 
@@ -97,9 +97,7 @@ while(True):
         print('mouse over yes2')
         mousePosLog('6')
         #save data
-        output = open('data.pkl', 'wb')
-        pickle.dump(positions, output)
-        output.close()
+        saveconfig()
         
     if command == 'print config':
         print(positions)
@@ -120,7 +118,7 @@ while(True):
         targetRange = 0.15
         cur_time = 0
         
-        chatReadDelay = 2.8
+        chatReadDelay = 3 #prev 2.8 
         #variables to be reset every loop
         targets = generateSearchPoints(0,1,includeExtremes=True)
         target = targets.pop(0)
@@ -134,6 +132,7 @@ while(True):
         idle_pointer_percent = 0
         targetAquiredFlag = False
         MONITOR_RESET_FLAG = False
+        interval_checkcongrats = 0
         while(True):
                 #update OPENCV IMAGE
             pointer_pos, cv_confidence = locatePointer()
@@ -143,7 +142,7 @@ while(True):
             prev_time = cur_time
             cur_time = time.monotonic()
             frame_time = cur_time-prev_time
-            #print("CVFPS: %3.2f, Frametime(ms): %3.2f" % (1/frame_time,frame_time*1000))
+            print("CVFPS: %3.2f, Frametime(ms): %3.2f" % (1/frame_time,frame_time*1000))
             
             y = pointer_pos[1]
             percent = (y-miny)/(maxy-miny)
@@ -155,6 +154,7 @@ while(True):
                     ahk.click()
                     setTimerDelayDict('locatepointer', chatReadDelay)
                     targetAquiredFlag = True
+                    print('locate pointer spam')
             
             if target<=0.2:
                 ahk.click()
@@ -164,11 +164,22 @@ while(True):
             #prevents timer spam with flipflop logic
             if MONITOR_RESET_FLAG:
                 if percent!=idle_pointer_percent:
+                    print("Flag set off by monitor reset")
                     targetAquiredFlag = False
                     MONITOR_RESET_FLAG = False
                 
             #find pointer->retrive chat log->update target information
-            if flipflopDelayTimer('locatepointer') or timeElasped()>75:
+            found_congrats = 0
+            if time.monotonic() + 0.3 > interval_checkcongrats:
+                if targetAquiredFlag:
+                    print('checking congrats')
+                    print(targetAquiredFlag)
+                    interval_checkcongrats = time.monotonic()
+                    congrats = readBoxKeywords(positions[I_CONGRATS_TOPLEFT],positions[I_CONGRATS_BOTTOMRIGHT], capture_window(getFF14()), keywords = ['Cong'])
+                    if congrats[0]=='Cong':
+                        found_congrats = 1
+            #executes only once per loop
+            if flipflopDelayTimer('locatepointer') or timeElasped()>75 or found_congrats:
                 targeterror = percent-target
                 print('result: '+str(round(percent,3))+' err: ' +str(round(targeterror,3)) + ' target ' +str(round(target,3)))
                 idle_pointer_percent = percent;
@@ -219,11 +230,13 @@ while(True):
                 ## SCORING And RESETTING
                 ##
                 ########
-                if score>=10 and timeElasped()>60 or attempts>=10 or score>=10 or timeElasped()>75:
+                #may cause perfomance issues if called every tick....
+            
+                score = 0 #debug purpsoe
+                if found_congrats or attempts>=10 or timeElasped()>75:
                     wins+=1
-                    time.sleep(0.8)
                     print('wins:' + str(wins))
-                    if wins==4 or timeElasped()>60 or attempts>=10:
+                    if wins==6 or timeElasped()>60 or attempts>=10:
                         time.sleep(1)
                         I_NO = copy.copy(positions[I_YES2])
                         I_NO[0] = I_NO[0]+80
@@ -240,8 +253,7 @@ while(True):
                         wins = 0
                     else:
                         locatePointer()
-                        mouseMotionClick(positions[I_YES2],10,'none')
-                        time.sleep(0.5)
+                        mouseMotionClick(positions[I_YES2],2,'none')
                         ahk.click();
                         time.sleep(0.1)
                         mouseMotionClick(positions[I_CHOP],1,'none')
@@ -254,12 +266,21 @@ while(True):
                     hotspotlevel = 0 
                     hotspotlocations = [0,0]
                     MONITOR_RESET_FLAG = False
-                    targetAquiredFlag = False
+                targetAquiredFlag = False
     #example of reading chat
     if command == 'readchat':
-        readChatResposne()
-        
-    #main loop
+        readChatResposne(True)
+    if command == 'setchat':
+        game_img = capture_window(getFF14())
+        pos1,pos2 = defineChatBox(game_img)
+        positions[I_CHAT_TOPLEFT] = pos1
+        positions[I_CHAT_BOTTOMRIGHT] = pos2
+        saveconfig()
+    if command == 'setcongrats':
+        game_img = capture_window(getFF14())
+        pos1,pos2 = defineChatBox(game_img)
+        positions[I_CONGRATS_TOPLEFT] = pos1
+        positions[I_CONGRATS_BOTTOMRIGHT] = pos2
+        saveconfig()
     if command == 'configlimits':
         configlimits();
-        
