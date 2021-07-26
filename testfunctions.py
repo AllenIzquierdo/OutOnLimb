@@ -1,3 +1,5 @@
+from numpy.f2py.auxfuncs import iscomplexarray
+from dearpygui._dearpygui import add_line_series
 DEBUG_FLAG = False
 
 import win32gui
@@ -15,8 +17,8 @@ import re
 import pytesseract
 import os
 from numpy.random.mtrand import randint
+import dearpygui.dearpygui as dpg
 #tesseract imports and pathing
-import pytesseract
 pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
 ahk = AHK('C:\Program Files\AutoHotkey\AutoHotkey.exe')
 #img for openCV processing
@@ -75,13 +77,19 @@ def configlimits():
     miny = 10000
     maxy = 0
     timerStart()
+    global xarray
+    global yarray
+    yarray = []
     while(timeElasped()<3):
         y,health,gray_scan_line = locatePointer()
+        if y==-1:
+            continue
         if miny > y:
             miny = y
         if maxy < y:
             maxy = y
-        
+        yarray.append(y)
+    xarray = list(range(1,len(yarray)))
     global positions
     global I_MINY
     global I_MAXY
@@ -103,6 +111,10 @@ def configlimits():
     output = open('data.pkl', 'wb')
     pickle.dump(positions, output)
     output.close()
+    #dispaly output
+    #print(yarray)
+
+    
 #ff14 output controls
 def mouseMotionClick(xy,rate,clicktype):
     global ahk
