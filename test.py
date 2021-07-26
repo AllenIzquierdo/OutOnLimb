@@ -52,12 +52,13 @@ def flipflopDelayTimer(string_index):
             return False
     else:
         return False
+
 def flipFlopOff(string_index):
         delay_timer_flipflop[string_index]=True
 #find target window
-target_hwnd = 0
-win32gui.EnumWindows(find_FF, target_hwnd)
-
+global target_hwnd
+fakevar = 0
+win32gui.EnumWindows(find_FF, fakevar)
 
 
 
@@ -95,9 +96,7 @@ while(True):
         print('mouse over yes2')
         mousePosLog(I_YES2)
         #save data
-        output = open('data.pkl', 'wb')
-        pickle.dump(positions, output)
-        output.close()
+        saveconfig()
         
     if command == 'print config':
         print(positions)
@@ -140,6 +139,7 @@ while(True):
         gamestartDelay = 0.9
         time.sleep(gamestartDelay)
         realChatDelayTime = 0
+
         while(True):
             if(keyboard.is_pressed('q')):
                 break
@@ -195,7 +195,8 @@ while(True):
             cur_time = time.monotonic()
             frame_time = cur_time-prev_time
             percent = (y-miny)/(maxy-miny)
-            
+
+            #for hitting targets within specified range
             if(target-targetRange)<percent and percent<(target+targetRange):
                 prev_percent = percent;
                 
@@ -204,13 +205,14 @@ while(True):
                     setTimerDelayDict('locatepointer', chatReadDelay)
                     realChatDelayTime = time.monotonic()
                     targetAquiredFlag = True
-            #might be why its getting stuck
+            #for hitting targets CV can't keep up with
             if target<=0.2:
                 ahk.click()
 
             #prevents timer spam with flipflop logic
             if MONITOR_RESET_FLAG:
                 if percent!=idle_pointer_percent:
+                    print("Flag set off by monitor reset")
                     targetAquiredFlag = False
                     MONITOR_RESET_FLAG = False
                 
@@ -274,18 +276,22 @@ while(True):
                 print('\n')
     #example of reading chat
     if command == 'readchat':
-        readChatResposne()
-        
-    #main loop
+        readChatResposne(True)
+    if command == 'setchat':
+        game_img = capture_window(getFF14())
+        pos1,pos2 = defineChatBox(game_img)
+        positions[I_CHAT_TOPLEFT] = pos1
+        positions[I_CHAT_BOTTOMRIGHT] = pos2
+        saveconfig()
+    if command == 'setcongrats':
+        game_img = capture_window(getFF14())
+        pos1,pos2 = defineChatBox(game_img)
+        positions[I_CONGRATS_TOPLEFT] = pos1
+        positions[I_CONGRATS_BOTTOMRIGHT] = pos2
+        saveconfig()
     if command == 'configlimits':
         configlimits();
     if command == 'readhp':
         game_img = capture_window(getFF14())#largest performance eater by far
         healthpos = positions[I_HEALTH]
         print(game_img[healthpos[1],healthpos[0],1])
-        
-        
-        
-        
-        
-        
