@@ -1,10 +1,10 @@
 from numpy.f2py.auxfuncs import iscomplexarray
-from dearpygui._dearpygui import add_line_series
-from mouseinfo import position
+
+
 DEBUG_FLAG = False
 
-w_resolution = 2560 # set this
-h_resolution = 1440 # set this
+w_resolution = 1920 # set this
+h_resolution = 1080 # set this
 import win32gui
 import cv2 as cv
 import numpy as np

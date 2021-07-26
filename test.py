@@ -70,6 +70,8 @@ prev_percent = 0
 #start program
 automode = False
 automodepause = False
+timenextafk = 0
+timedoneafk = 0
 while(True):
     command = ""
     if automode == False:
@@ -148,7 +150,7 @@ while(True):
         targetAquiredFlag = False
         MONITOR_RESET_FLAG = False
         health = 1
-        gamerestartDelay = 1.5
+        gamerestartDelay = 1.7
         gamestartDelay = 0.9
         time.sleep(gamestartDelay)
         realChatDelayTime = 0
@@ -157,14 +159,19 @@ while(True):
             if(keyboard.is_pressed('q')):
                 if automode == True:
                     print('automode pausing')
+                    flipFlopOff('locatepointer')
                 break
             
-                #update OPENCV IMAGE
+            #tries to click faster than
+            if target<=0.2:
+                ahk.click()
+            #update OPENCV IMAGE
             y, health, gray_scale_line= locatePointer()
+            
             if y==-1 and health>120:
                 continue
                 #reset process
-            if  attempts>=10 or timeElasped()>75 or health<120:
+            if  attempts>=10 or timeElasped()>82 or health<120:
                 flipFlopOff('locatepointer')
                 wins+=1
                 time.sleep(0.8)
@@ -210,7 +217,12 @@ while(True):
             cur_time = time.monotonic()
             frame_time = cur_time-prev_time
             percent = (y-miny)/(maxy-miny)
-
+            #prevents bad delays 
+            if MONITOR_RESET_FLAG:
+                if percent!=idle_pointer_percent:
+                    print("Flag set off by monitor reset")
+                    targetAquiredFlag = False
+                    MONITOR_RESET_FLAG = False
             #for hitting targets within specified range
             if(target-targetRange)<percent and percent<(target+targetRange):
                 prev_percent = percent;
@@ -220,19 +232,16 @@ while(True):
                     setTimerDelayDict('locatepointer', chatReadDelay)
                     realChatDelayTime = time.monotonic()
                     targetAquiredFlag = True
+                    print('hit deteced, see below')
+                    print(gray_scale_line)
             #for hitting targets CV can't keep up with
-            if target<=0.2:
-                ahk.click()
+            
 
             #prevents timer spam with flipflop logic
-            if MONITOR_RESET_FLAG:
-                if percent!=idle_pointer_percent:
-                    print("Flag set off by monitor reset")
-                    targetAquiredFlag = False
-                    MONITOR_RESET_FLAG = False
+            
                 
             #find pointer->retrive chat log->update target information
-            if flipflopDelayTimer('locatepointer') or timeElasped()>75:
+            if flipflopDelayTimer('locatepointer'):
                 print('Real Chat Delay time: '+ str(time.monotonic()-realChatDelayTime))
                 print('reading chat')
                 targeterror = percent-target
@@ -257,16 +266,21 @@ while(True):
                     score+=0
                 if response[0]=='something close':
                     score+=1
+      
+                        
                     if hotspotlevel<1:
                         hotspotlevel = 1
                         targets = generateSearchPoints(-2, 2, hitmarker=percent, rangemarker=0.4)
                         hotspotlocations[0] = percent
+                    
                 if response[0]=='very':
                     score+=4
+                    
                     if hotspotlevel<2:
                         hotspotlevel = 2
                         targets = generateSearchPoints(-2, 2, hitmarker=percent, rangemarker=0.2)
                         hotspotlocations[1] = percent
+                    
                 if response[0]=='top':
                     score+=10
 
@@ -275,6 +289,8 @@ while(True):
                 else:
                     if hotspotlocations[1]:
                         target = hotspotlocations[1]
+                    elif hotspotlocations[0]:
+                        target = hotspotlocations[0]
                 attempts+=1
                 print('score :' + str(score) + ' timer: ' + str(round(timeElasped())) + ' attempts: '+str(attempts))
                 MONITOR_RESET_FLAG = True
@@ -298,12 +314,9 @@ while(True):
         positions[I_CHAT_TOPLEFT] = pos1
         positions[I_CHAT_BOTTOMRIGHT] = pos2
         saveconfig()
-    if command == 'setcongrats':
-        game_img = capture_window(getFF14())
-        pos1,pos2 = defineChatBox(game_img)
-        positions[I_CONGRATS_TOPLEFT] = pos1
-        positions[I_CONGRATS_BOTTOMRIGHT] = pos2
-        saveconfig()
+    if command == 'setyes2':
+        print('mouse over yes2')
+        mousePosLog(I_YES2)
     if command == 'configlimits':
         configlimits();
     if command == 'readhp':
