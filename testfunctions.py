@@ -64,6 +64,13 @@ def randomTargetRangeIndex(target_range):
         return randint(0,len(target_range)-1)
     
 def configlimits():
+    print('mouse over upperleft')
+    mousePosLog(I_UPBOUND)
+    print('mouse over edge')
+    mousePosLog(I_EDGE)
+    print('mouse over lowerRight')
+    mousePosLog(I_LOWBOUND)
+
     timerStart()
     miny = 10000
     maxy = 0

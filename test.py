@@ -6,6 +6,7 @@ from testfunctions import *
 import os
 import copy
 from pointassist import *
+from pickle import TRUE
 
 #some chat constants
 #[[82, 1319] bottom left
@@ -51,7 +52,8 @@ def flipflopDelayTimer(string_index):
             return False
     else:
         return False
-        
+def flipFlopOff(string_index):
+        delay_timer_flipflop[string_index]=True
 #find target window
 target_hwnd = 0
 win32gui.EnumWindows(find_FF, target_hwnd)
@@ -87,13 +89,6 @@ while(True):
         print('mouse over health')
         mousePosLog(I_HEALTH)
         print('mouse over upperleft')
-        mousePosLog(I_UPBOUND)
-        print('mouse over edge')
-        mousePosLog(I_EDGE)
-        print('mouse over lowerRight')
-        mousePosLog(I_LOWBOUND)
-        print('mouse over timer')
-        mousePosLog(I_TIMER)
         #config limits
         print('configuring limits')
         configlimits()
@@ -123,7 +118,10 @@ while(True):
         targetRange = 0.15
         cur_time = 0
         
-        chatReadDelay = 2.8
+        # tests appears to be 2 second delays for health
+        # 2.5 seconds for health + ghost bar to go away
+        #chatReadDelay = 2.8
+        chatReadDelay = 2.6 #might need 2.7
         #variables to be reset every loop
         targets = generateSearchPoints(0,1,includeExtremes=True)
         target = targets.pop(0)
@@ -138,21 +136,25 @@ while(True):
         targetAquiredFlag = False
         MONITOR_RESET_FLAG = False
         health = 1
-        gamerestartDelay = 1.2
+        gamerestartDelay = 1.5
         gamestartDelay = 0.9
         time.sleep(gamestartDelay)
+        realChatDelayTime = 0
         while(True):
             if(keyboard.is_pressed('q')):
                 break
             
                 #update OPENCV IMAGE
             y, health, gray_scale_line= locatePointer()
+            if y==-1 and health>120:
+                continue
                 #reset process
             if  attempts>=10 or timeElasped()>75 or health<120:
+                flipFlopOff('locatepointer')
                 wins+=1
                 time.sleep(0.8)
                 print('wins:' + str(wins))
-                if wins==4 or timeElasped()>60 or attempts>=10:
+                if wins==6 or timeElasped()>60 or attempts>=10:
                     time.sleep(1)
                     I_NO = copy.copy(positions[I_YES2])
                     I_NO[0] = I_NO[0]+80
@@ -172,8 +174,8 @@ while(True):
                     mouseMotionClick(positions[I_YES2],10,'none')
                     time.sleep(gamerestartDelay)
                     ahk.click();
-                    time.sleep(0.1)
                     mouseMotionClick(positions[I_CHOP],1,'none')
+                    time.sleep(0.2)#0.1 causes false readings
                 target_hotspot = -1 #reset hotspot for next loop
                 #MONITOR_RESET_FLAG = False
                 attempts=0
@@ -196,11 +198,13 @@ while(True):
                 if targetAquiredFlag == False:
                     ahk.click()
                     setTimerDelayDict('locatepointer', chatReadDelay)
+                    realChatDelayTime = time.monotonic()
                     targetAquiredFlag = True
-            
+            #might be why its getting stuck
+            """
             if target<=0.2:
                 ahk.click()
-                
+                """
 
             #prevents timer spam with flipflop logic
             if MONITOR_RESET_FLAG:
@@ -209,7 +213,8 @@ while(True):
                     MONITOR_RESET_FLAG = False
                 
             #find pointer->retrive chat log->update target information
-            if flipflopDelayTimer('locatepointer') or timeElasped()>75 or health<120:
+            if flipflopDelayTimer('locatepointer') or timeElasped()>75:
+                print('Real Chat Delay time: '+ str(time.monotonic()-realChatDelayTime))
                 print('reading chat')
                 targeterror = percent-target
                 print('result: '+str(round(percent,3))+' err: ' +str(round(targeterror,3)) + ' target ' +str(round(target,3)))
