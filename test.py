@@ -68,12 +68,25 @@ inter_pos = []
 cv_confidence = 0;
 prev_percent = 0
 #start program
+automode = False
+automodepause = False
 while(True):
-    command = input('Await your command:')
-    #full config setup command
-    if command == 'testtimer':
-        setTimerDelayDict('test1', 5)
+    command = ""
+    if automode == False:
+        command = input('Await your command:')
+    if command == "auto":
+        automode = True
+    if keyboard.is_pressed('t'):
+        automode = False
+    if(keyboard.is_pressed('r') and automode == True):
+        command = 'init'
+        automodepause = False
+        print('automode resuming')
+    if automode == True:
+        time.sleep(0.2)
 
+
+    #full config setup command
     if command == 'config':
         try:
             os.remove('data.pkl')
@@ -142,6 +155,8 @@ while(True):
 
         while(True):
             if(keyboard.is_pressed('q')):
+                if automode == True:
+                    print('automode pausing')
                 break
             
                 #update OPENCV IMAGE
