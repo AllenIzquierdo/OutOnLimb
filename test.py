@@ -170,12 +170,15 @@ while(True):
                     timerStart()
                     time.sleep(gamestartDelay)
                     wins = 0
+                    #updates pointer after slept
+                    y, health, gray_scale_line= locatePointer()
                 else:
                     mouseMotionClick(positions[I_YES2],10,'none')
                     time.sleep(gamerestartDelay)
                     ahk.click();
                     mouseMotionClick(positions[I_CHOP],1,'none')
                     time.sleep(0.2)#0.1 causes false readings
+                    y, health, gray_scale_line = locatePointer()
                 target_hotspot = -1 #reset hotspot for next loop
                 #MONITOR_RESET_FLAG = False
                 attempts=0
@@ -195,16 +198,15 @@ while(True):
             
             if(target-targetRange)<percent and percent<(target+targetRange):
                 prev_percent = percent;
+                
                 if targetAquiredFlag == False:
                     ahk.click()
                     setTimerDelayDict('locatepointer', chatReadDelay)
                     realChatDelayTime = time.monotonic()
                     targetAquiredFlag = True
             #might be why its getting stuck
-            """
             if target<=0.2:
                 ahk.click()
-                """
 
             #prevents timer spam with flipflop logic
             if MONITOR_RESET_FLAG:

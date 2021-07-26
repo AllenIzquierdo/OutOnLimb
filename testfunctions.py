@@ -1,5 +1,6 @@
 from numpy.f2py.auxfuncs import iscomplexarray
 from dearpygui._dearpygui import add_line_series
+from mouseinfo import position
 DEBUG_FLAG = False
 
 import win32gui
@@ -16,6 +17,7 @@ import random
 import re
 import pytesseract
 import os
+import copy
 from numpy.random.mtrand import randint
 import dearpygui.dearpygui as dpg
 #tesseract imports and pathing
@@ -25,7 +27,7 @@ ahk = AHK('C:\Program Files\AutoHotkey\AutoHotkey.exe')
 target_img = cv.imread('arrow.jpg')
 gray_target_img = cv.cvtColor(target_img, cv.COLOR_BGR2GRAY)
 #ui element positions
-I_count = 12
+I_count = 14
 I_MINIGAME = 0
 I_YES1 = 1
 I_BUTTON = 2
@@ -38,6 +40,8 @@ I_MAXY = 8
 I_MINY = 9 #modify I_count whenver adding new values
 I_YES2 = 10
 I_HEALTH = 11
+I_IMG_Y_INDEXES = 12
+I_IMG_X_INDEXES = 13
 try:
     pkl_file = open('data.pkl', 'rb')
     positions = pickle.load(pkl_file)
@@ -66,19 +70,42 @@ def randomTargetRangeIndex(target_range):
         return randint(0,len(target_range)-1)
     
 def configlimits():
+    global positions
+    global I_MINY
+    global I_MAXY
+    global I_count
+    global xarray
+    global yarray
+    global I_IMG_X_INDEXES
+    global I_IMG_Y_INDEXES
     print('mouse over upperleft')
     mousePosLog(I_UPBOUND)
     print('mouse over edge')
     mousePosLog(I_EDGE)
     print('mouse over lowerRight')
     mousePosLog(I_LOWBOUND)
+    p1 = np.array(copy.copy(positions[I_UPBOUND]))
+    p2 = np.array(copy.copy(positions[I_EDGE]))
+    p1 = np.flip(p1)
+    p2 = np.flip(p2)
+    p3 = []
+    p3.append(p2[0] + p2[0]-p1[0])
+    p3.append(p1[1])
+    A,B,C = calc_parabola_vertex(p1,p2,p3)
+    yi = np.arange(p1[0],p3[0]+1)
+    yi = yi.astype(int)
+    parabolaoutput = A*yi**2+B*yi+C
+    parabolaoutput = parabolaoutput.round()
+    parabolaoutput = parabolaoutput.astype(int)
+    positions[I_IMG_Y_INDEXES] = yi
+    positions[I_IMG_X_INDEXES] = parabolaoutput
+    print(positions[I_IMG_Y_INDEXES])
+    print(positions[I_IMG_X_INDEXES])
 
     timerStart()
     miny = 10000
     maxy = 0
     timerStart()
-    global xarray
-    global yarray
     yarray = []
     while(timeElasped()<3):
         y,health,gray_scan_line = locatePointer()
@@ -90,10 +117,6 @@ def configlimits():
             maxy = y
         yarray.append(y)
     xarray = list(range(1,len(yarray)))
-    global positions
-    global I_MINY
-    global I_MAXY
-    global I_count
     if len(positions) < I_count:
         positions.append(miny)
         positions.append(miny)
@@ -125,6 +148,65 @@ def mouseMotionClick(xy,rate,clicktype):
         ahk.click()
 
 #ff14 input functions
+def calc_parabola_vertex(p1, p2, p3):
+        '''
+        Adapted and modifed to get the unknowns for defining a parabola:
+        http://stackoverflow.com/questions/717762/how-to-calculate-the-vertex-of-a-parabola-given-three-points
+        '''
+        x1 = p1[0]
+        x2 = p2[0]
+        x3 = p3[0]
+        y1 = p1[1]
+        y2 = p2[1]
+        y3 = p3[1]
+        denom = (x1-x2) * (x1-x3) * (x2-x3);
+        A     = (x3 * (y2-y1) + x2 * (y1-y3) + x1 * (y3-y2)) / denom;
+        B     = (x3*x3 * (y1-y2) + x2*x2 * (y3-y1) + x1*x1 * (y2-y3)) / denom;
+        C     = (x2 * x3 * (x2-x3) * y1+x3 * x1 * (x3-x1) * y2+x1 * x2 * (x1-x2) * y3) / denom;
+
+        return A,B,C
+def locatePointer():
+    #capture ff14 image
+    global target_hwnd
+    global I_UPBOUND
+    global I_LOWBOUND
+    global positions
+    game_img = capture_window(target_hwnd)#largest performance eater by far
+        #crop image to scan zone for pointer
+    """
+    top = positions[I_UPBOUND][1]
+    bottom = positions[I_LOWBOUND][1]
+    edge = positions[I_EDGE][0]
+    scan_zone = game_img[top:bottom,edge:edge+1]
+    gray_scan_zone = cv.cvtColor(scan_zone, cv.COLOR_BGR2GRAY)
+    th, gray_scan_zone = cv.threshold(gray_scan_zone,230,255,cv.THRESH_BINARY)
+    gray_scan_line = gray_scan_zone[:,0]
+    """
+    gray_game_img = cv.cvtColor(game_img, cv.COLOR_BGR2GRAY)
+    th, gray_scan = cv.threshold(gray_game_img,230,255,cv.THRESH_BINARY)
+    index = 0
+    xindexes = positions[I_IMG_X_INDEXES]
+    yindexes = positions[I_IMG_Y_INDEXES]
+    gray_scan_line = [None]*len(xindexes)
+    while index<len(xindexes):
+        gray_scan_line[index] = gray_scan[yindexes[index],xindexes[index]]
+        index+=1
+    location = np.argmax(gray_scan_line)
+    #print(gray_scan_line)
+    # retrusn locaiton=-1 on target not found
+    if(gray_scan_line[location]==0):
+        location = -1
+
+    #obtain health info
+    healthpos = positions[I_HEALTH]
+    health =  game_img[healthpos[1],healthpos[0],1]
+    #exit conditions
+    if DEBUG_FLAG == True:
+        #gray_scan_zone = cv.circle(gray_scan_zone,maxLoc,10,color=(255,255,255))
+        cv.imshow('test',gray_scan_zone)
+        cv.waitKey(1)
+    return location,health,gray_scan_line
+"""
 def locatePointer():
     #capture ff14 image
     global target_hwnd
@@ -154,7 +236,7 @@ def locatePointer():
         cv.imshow('test',gray_scan_zone)
         cv.waitKey(1)
     return location,health,gray_scan_line
-            
+"""            
 def readChatResposne(DEBUG = False): #https://stackoverflow.com/questions/28280920/convert-array-of-words-strings-to-regex-and-use-it-to-get-matches-on-a-string for refernce comparing array of strings to string
     global RESPONES
     game_img = capture_window(target_hwnd)
