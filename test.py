@@ -100,6 +100,8 @@ while(True):
         mousePosLog(I_YES1)
         print('mouse over button')
         mousePosLog(I_BUTTON)
+        print('mouse over middle difficulty')
+        mousePosLog(I_DIFFICULTYMIDDLE)
         print('mouse over chop')
         mousePosLog(I_CHOP)
         print('mouse over health')
@@ -124,8 +126,10 @@ while(True):
         time.sleep(1)
         mouseMotionClick(positions[I_MINIGAME],10,'right')
         mouseMotionClick(positions[I_YES1],10,'left')
-        time.sleep(2)
-        mouseMotionClick(positions[I_BUTTON],10,'left')
+        time.sleep(1)
+        mouseMotionClick(positions[I_BUTTON],10,'none')
+        difficultySelectWait()
+        ahk.click()
         mouseMotionClick(positions[I_CHOP],10,'none')
         miny = positions[I_MINY]
         maxy = positions[I_MAXY]
@@ -176,7 +180,7 @@ while(True):
                 wins+=1
                 time.sleep(0.8)
                 print('wins:' + str(wins))
-                if wins==6 or timeElasped()>60 or attempts>=10:
+                if wins==5 or timeElasped()>55 and wins >=4 or timeElasped()>60 or attempts>=10:
                     time.sleep(1)
                     I_NO = copy.copy(positions[I_YES2])
                     I_NO[0] = I_NO[0]+80
@@ -184,8 +188,10 @@ while(True):
                     time.sleep(1)
                     mouseMotionClick(positions[I_MINIGAME],10,'right')
                     mouseMotionClick(positions[I_YES1],10,'left')
-                    time.sleep(2)
-                    mouseMotionClick(positions[I_BUTTON],10,'left')
+                    time.sleep(1)
+                    mouseMotionClick(positions[I_BUTTON],10,'none')
+                    difficultySelectWait()
+                    ahk.click()
                     mouseMotionClick(positions[I_CHOP],10,'none')
                     miny = positions[I_MINY]
                     maxy = positions[I_MAXY]
@@ -206,6 +212,7 @@ while(True):
                 attempts=0
                 score = 0
                 targets = generateSearchPoints(0,1,includeExtremes=True)
+                targets = [0.5,0.21,0.8,0,1]
                 target = targets.pop(0)
                 hotspotlevel = 0 
                 hotspotlocations = [0,0]
@@ -262,35 +269,42 @@ while(True):
                 ## Updates Target_Range information and assigns new target
                 indx = 0;
                 print(response[0]);
+                skippop = False
                 if response[0]=='nothing':
                     score+=0
                 if response[0]=='something close':
                     score+=1
-      
-                        
                     if hotspotlevel<1:
                         hotspotlevel = 1
-                        targets = generateSearchPoints(-2, 2, hitmarker=percent, rangemarker=0.4)
-                        hotspotlocations[0] = percent
+                        targets = generateSearchPoints(-2, 2, hitmarker=target, rangemarker=0.4)
+                        #hotspotlocations[0] = percent
+                        hotspotlocations[0] = target
                     
                 if response[0]=='very':
                     score+=4
-                    
+                    if hotspotlevel==2:
+                        skippop = True
+                        target = target
+                           
                     if hotspotlevel<2:
                         hotspotlevel = 2
-                        targets = generateSearchPoints(-2, 2, hitmarker=percent, rangemarker=0.2)
-                        hotspotlocations[1] = percent
+                        targets = generateSearchPoints(-2, 2, hitmarker=target, rangemarker=0.2)
+                        hotspotlocations[1] = target
+                        #trying lock on very close splots
+                        skippop = True
                     
                 if response[0]=='top':
                     score+=10
 
-                if len(targets)>0:
+                if len(targets)>0 and skippop==False:
                     target = targets.pop(0)
-                else:
+                elif skippop==False     :
                     if hotspotlocations[1]:
                         target = hotspotlocations[1]
                     elif hotspotlocations[0]:
                         target = hotspotlocations[0]
+                        
+
                 attempts+=1
                 print('score :' + str(score) + ' timer: ' + str(round(timeElasped())) + ' attempts: '+str(attempts))
                 MONITOR_RESET_FLAG = True
@@ -317,9 +331,17 @@ while(True):
     if command == 'setyes2':
         print('mouse over yes2')
         mousePosLog(I_YES2)
+        saveconfig()
+    if command == 'setmiddle':
+        print('mouse over middle difficulty')
+        mousePosLog(I_DIFFICULTYMIDDLE)
+        saveconfig()
     if command == 'configlimits':
         configlimits();
     if command == 'readhp':
         game_img = capture_window(getFF14())#largest performance eater by far
         healthpos = positions[I_HEALTH]
         print(game_img[healthpos[1],healthpos[0],1])
+    if command == 'setgame':
+        mousePosLog(I_MINIGAME)
+        saveconfig()

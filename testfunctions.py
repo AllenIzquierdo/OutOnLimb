@@ -1,4 +1,5 @@
 from numpy.f2py.auxfuncs import iscomplexarray
+from pydirectinput import position
 
 
 DEBUG_FLAG = False
@@ -30,7 +31,7 @@ target_img = cv.imread('arrow.jpg')
 gray_target_img = cv.cvtColor(target_img, cv.COLOR_BGR2GRAY)
 
 #ui element positions
-I_count = 16
+I_count = 17
 I_MINIGAME = 0
 I_YES1 = 1
 I_BUTTON = 2
@@ -47,7 +48,7 @@ I_IMG_Y_INDEXES = 12
 I_IMG_X_INDEXES = 13
 I_CHAT_TOPLEFT = 14
 I_CHAT_BOTTOMRIGHT = 15
-
+I_DIFFICULTYMIDDLE = 16
 try:
     pkl_file = open('data.pkl', 'rb')
     positions = pickle.load(pkl_file)
@@ -103,12 +104,20 @@ def configlimits():
     p2 = np.array(copy.copy(positions[I_EDGE]))
     p1 = np.flip(p1)
     p2 = np.flip(p2)
+    """
     p3 = []
     p3.append(p2[0] + p2[0]-p1[0])
     p3.append(p1[1])
+    """
+    p3 = np.array(copy.copy(positions[I_LOWBOUND]))
+    p3 = np.flip(p3)
     A,B,C = calc_parabola_vertex(p1,p2,p3)
     yi = np.arange(p1[0],p3[0]+1)
     yi = yi.astype(int)
+    print('p1: '+ str(p1))
+    print('p2: ' + str(p2))
+    print('p3: ' + str(p3))
+    print('A,B,C:'+str(A)+','+str(B)+','+str(C))
     parabolaoutput = A*yi**2+B*yi+C
     parabolaoutput = parabolaoutput.round()
     parabolaoutput = parabolaoutput.astype(int)
@@ -124,6 +133,7 @@ def configlimits():
     yarray = []
     while(timeElasped()<3):
         y,health,gray_scan_line = locatePointer()
+        print(y)
         if y==-1:
             continue
         if miny > y:
@@ -132,12 +142,8 @@ def configlimits():
             maxy = y
         yarray.append(y)
     xarray = list(range(1,len(yarray)))
-    if len(positions) < I_count:
-        positions.append(miny)
-        positions.append(miny)
-    else:
-        positions[I_MAXY] = maxy
-        positions[I_MINY] = miny
+    positions[I_MAXY] = maxy
+    positions[I_MINY] = miny
     #save data
     #output = open('data.pkl', 'wb')
     #pickle.dump(positions, output)
@@ -158,17 +164,19 @@ def calc_parabola_vertex(p1, p2, p3):
         Adapted and modifed to get the unknowns for defining a parabola:
         http://stackoverflow.com/questions/717762/how-to-calculate-the-vertex-of-a-parabola-given-three-points
         '''
-        x1 = p1[0]
-        x2 = p2[0]
-        x3 = p3[0]
-        y1 = p1[1]
-        y2 = p2[1]
-        y3 = p3[1]
+        x1 = np.float64(p1[0])
+        x2 = np.float64(p2[0])
+        x3 = np.float64(p3[0])
+        y1 = np.float64(p1[1])
+        y2 = np.float64(p2[1])
+        y3 = np.float64(p3[1])
         denom = (x1-x2) * (x1-x3) * (x2-x3);
         A     = (x3 * (y2-y1) + x2 * (y1-y3) + x1 * (y3-y2)) / denom;
         B     = (x3*x3 * (y1-y2) + x2*x2 * (y3-y1) + x1*x1 * (y2-y3)) / denom;
         C     = (x2 * x3 * (x2-x3) * y1+x3 * x1 * (x3-x1) * y2+x1 * x2 * (x1-x2) * y3) / denom;
-
+        A = A.item()
+        B = B.item()
+        C = C.item()
         return A,B,C
 def locatePointer():
     #capture ff14 image
@@ -315,3 +323,28 @@ def capture_window(hwnd):
     win32gui.DeleteObject(dataBitMap.GetHandle())
     
     return img
+
+
+def getDifficultyColor():
+    #capture ff14 image
+    global target_hwnd
+    global positions
+    game_img = capture_window(target_hwnd)#largest performance eater by far
+        #crop image to scan zone for pointer
+    #obtain health info
+    middle = positions[I_DIFFICULTYMIDDLE]
+    middle =  game_img[middle[1],middle[0],1]
+    #exit conditions
+    return middle
+def difficultySelectWait():
+    startime = time.monotonic()
+    color = getDifficultyColor()
+    while(time.monotonic()-startime<3):
+        newcolor = getDifficultyColor()
+        if color!=newcolor:
+            print('color: '+str(color))
+            print('newcolor: '+str(newcolor))
+            print('new color detected')
+            break
+    
+        

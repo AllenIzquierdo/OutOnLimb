@@ -3,7 +3,7 @@ points = []
 def generateHalfPoint(lower,upper):
     return (lower+upper)/2
 
-def generateSearchPoints(lower,upper, hitmarker = -1, rangemarker = -1, bounds = [0,1], includeExtremes = False):
+def generateSearchPoints(lower,upper, hitmarker = -1, rangemarker = -1, flatrange=-1, bounds = [0,1], includeExtremes = False):
     pointsearch = []
     if hitmarker == -1:
         hitmarker = generateHalfPoint(lower,upper)
@@ -19,6 +19,7 @@ def generateSearchPoints(lower,upper, hitmarker = -1, rangemarker = -1, bounds =
         if upperRange > rangemarker:
             upper = hitmarker + rangemarker
     # Apply extreme bounds
+
     if lower < bounds[0]:
         lower = bounds[0]
     if upper > bounds[1]:
@@ -27,12 +28,13 @@ def generateSearchPoints(lower,upper, hitmarker = -1, rangemarker = -1, bounds =
     # order by size
     lowerRange = hitmarker - lower;
     upperRange = upper - hitmarker;
-    if upperRange < lowerRange:
-        pointsearch.append(generateHalfPoint(hitmarker,upper))
-        pointsearch.append(generateHalfPoint(lower,hitmarker))
-    else:
-        pointsearch.append(generateHalfPoint(lower,hitmarker))
-        pointsearch.append(generateHalfPoint(hitmarker,upper))
+    if flatrange==-1:
+        if upperRange < lowerRange:
+            pointsearch.append(generateHalfPoint(hitmarker,upper))
+            pointsearch.append(generateHalfPoint(lower,hitmarker))
+        else:
+            pointsearch.append(generateHalfPoint(lower,hitmarker))
+            pointsearch.append(generateHalfPoint(hitmarker,upper))
         
     # Include boudnaires
     if includeExtremes:
